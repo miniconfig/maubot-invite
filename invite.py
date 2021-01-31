@@ -7,12 +7,15 @@ from maubot.handlers import command
 import json
 import datetime
 
+
 class Config(BaseProxyConfig):
     def do_update(self, helper: ConfigUpdateHelper) -> None:
         helper.copy("admin_secret")
         helper.copy("reg_url")
         helper.copy("admins")
         helper.copy("expiration")
+        helper.copy("external_url")
+
 
 class Invite(Plugin):
     async def start(self) -> None:
@@ -30,8 +33,8 @@ class Invite(Plugin):
             await evt.respond("You don't have permission to manage invitations for this server.")
             return False
 
-    @command.new(name="invite", help="Generate a unique invitation code to this matrix homeserver", \
-            require_subcommand=True)
+    @command.new(name="invite", help="Generate a unique invitation code to this matrix homeserver",
+                 require_subcommand=True)
     async def invite(self, evt: MessageEvent) -> None:
         pass
 
@@ -42,17 +45,17 @@ class Invite(Plugin):
         if not await self.can_manage(evt):
             return
 
-        ex_date = datetime.datetime.strftime( \
-                (datetime.date.today() + datetime.timedelta(days=self.config["expiration"])), \
-                "%m.%d.%Y")
+        ex_date = datetime.datetime.strftime(
+            (datetime.date.today() + datetime.timedelta(days=self.config["expiration"])),
+            "%m.%d.%Y")
         headers = {
             'Authorization': f"SharedSecret {self.config['admin_secret']}",
             'Content-Type': 'application/json'
-            }
-        
+        }
+
         try:
-            response = await self.http.post(f"{self.config['reg_url']}/token", headers=headers, \
-                    json={"one_time": True, "ex_date": ex_date})
+            response = await self.http.post(f"{self.config['reg_url']}/token", headers=headers,
+                                            json={"one_time": True, "ex_date": ex_date})
             resp_json = await response.json()
         except Exception as e:
             await evt.respond(f"request failed: {e.message}")
@@ -64,17 +67,17 @@ class Invite(Plugin):
                     {resp_json}")
             self.log.exception(e)
             return None
-        
+
         await evt.respond('<br />'.join(
             [
                 f"Invitation token {token} created! You may share the following message with your invitee:",
                 f"",
                 f"Your unique url for registering is:",
-                f"{self.config['reg_url']}/register?token={token}",
+                f"{self.config['external_url']}/register?token={token}",
                 f"This invite token will expire in {self.config['expiration']} days.",
                 f"If it expires before use, you must request a new token."
             ]
-            ), allow_html=True)
+        ), allow_html=True)
 
     @invite.subcommand("status", help="Return the status of an invite token.")
     @command.argument("token", "Token", pass_raw=True, required=True)
@@ -90,7 +93,7 @@ class Invite(Plugin):
         headers = {
             'Authorization': f"SharedSecret {self.config['admin_secret']}",
             'Content-Type': 'application/json'
-            }
+        }
 
         try:
             response = await self.http.get(f"{self.config['reg_url']}/token/{token}", headers=headers)
@@ -98,9 +101,11 @@ class Invite(Plugin):
         except Exception as e:
             await evt.respond(f"request failed: {e.message}")
             return None
-        
+
         # this isn't formatted nicely but i don't really care that much
-        await evt.respond(f"Status of token {token}: \n<pre><code format=json>{json.dumps(resp_json, indent=4)}</code></pre>", allow_html=True)
+        await evt.respond(
+            f"Status of token {token}: \n<pre><code format=json>{json.dumps(resp_json, indent=4)}</code></pre>",
+            allow_html=True)
 
     @invite.subcommand("revoke", help="Disable an existing invite token.")
     @command.argument("token", "Token", pass_raw=True, required=True)
@@ -116,16 +121,16 @@ class Invite(Plugin):
         headers = {
             'Authorization': f"SharedSecret {self.config['admin_secret']}",
             'Content-Type': 'application/json'
-            }
+        }
 
         try:
             response = await self.http.put(f"{self.config['reg_url']}/token/{token}", headers=headers, \
-                    json={"disable": True})
+                                           json={"disable": True})
             resp_json = await response.json()
         except Exception as e:
             await evt.respond(f"request failed: {e.message}")
             return None
-        
+
         # this isn't formatted nicely but i don't really care that much
         await evt.respond(f"<pre><code format=json>{json.dumps(resp_json, indent=4)}</code></pre>", allow_html=True)
 
@@ -138,7 +143,7 @@ class Invite(Plugin):
 
         headers = {
             'Authorization': f"SharedSecret {self.config['admin_secret']}"
-            }
+        }
 
         try:
             response = await self.http.get(f"{self.config['reg_url']}/token", headers=headers)
@@ -146,6 +151,6 @@ class Invite(Plugin):
         except Exception as e:
             await evt.respond(f"request failed: {e.message}")
             return None
-        
+
         # this isn't formatted nicely but i don't really care that much
         await evt.respond(f"<pre><code format=json>{json.dumps(resp_json, indent=4)}</code></pre>", allow_html=True)
